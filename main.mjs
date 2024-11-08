@@ -2,65 +2,65 @@ import * as cheerio from 'cheerio';
 import * as fs from 'fs/promises';
 
 
+// helpers 
 
-/* example output of app in sitemap.xml
+const saveToJsonlFile = async (objects, filePath) => {
+    try {
+        // Create directory if it doesn't exist
+        await fs.mkdir('./data', { recursive: true });
+        
+        // Convert each object to JSONL format and join with newlines
+        const jsonlContent = objects
+            .map(obj => JSON.stringify(obj))
+            .join('\n');
+        
+        // Write to file
+        await fs.writeFile(filePath, jsonlContent);
+        console.log(`Successfully saved ${objects.length} items to ${filePath}`);
+    } catch (error) {
+        console.error(`Error saving to ${filePath}:`, error);
+    }
+};
+const appendToJsonlFile = async (object, filePath) => {
+    try {
+        // Create directory if it doesn't exist
+        await fs.mkdir('./data', { recursive: true });
+        
+        // Convert object to JSONL format with newline
+        const jsonlLine = JSON.stringify(object) + '\n';
+        
+        // Append to file
+        await fs.appendFile(filePath, jsonlLine);
+        console.log(`Successfully appended item to ${filePath}`);
+    } catch (error) {
+        console.error(`Error appending to ${filePath}:`, error);
+    }
+};
 
-  <url>
-    <loc>https://apps.shopify.com/upload-lift</loc>
-    <lastmod>2024-09-26</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.8</priority>
-  </url>
+const loadManifest = async (filePath) => {
+    try {
+        const content = await fs.readFile(filePath, 'utf-8');
+        return new Set(
+            content.trim().split('\n')
+                .map(line => JSON.parse(line).url)
+        );
+    } catch (error) {
+        // If file doesn't exist, return empty Set
+        return new Set();
+    }
+};
+
+const appendToManifest = async (url, filePath) => {
+    const manifestEntry = {
+        url,
+        scrapedAt: new Date().toISOString()
+    };
+    await appendToJsonlFile(manifestEntry, filePath);
+};
 
 
-  example output of developer in sitemap.xml    
 
-    <url>
-    <loc>https://apps.shopify.com/partners/matrix40</loc>
-    <lastmod>2024-11-04</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.8</priority>
-  </url>
-
-
-*/
-
-
-const appExample = {
-    id: "",
-    name: "",
-    url: "",
-    rating: {
-        total: 3.8,
-        stars: {
-            5: 80,
-            4: 10,
-            3: 5,
-            2: 2,
-            1: 1
-        }
-    },
-    reviews: [{
-        date: "",
-        name: "",
-        location: "",
-        timeUsingApp: "",
-        stars: 0,
-        reviewText: "",
-        response: "",
-    }],
-    pricing: {},
-    highlights: [],
-    developer: {
-        id: "",
-        name: "",
-        url: "",
-    },
-    categories: [],
-    features: [],
-    languages: [],
-
-}
+// main functions 
 
 
 const parseAppData = async ($) => {
@@ -234,62 +234,7 @@ const parseAppData = async ($) => {
     console.log('Finished parsing app data');
     return data;
 };
-const saveToJsonlFile = async (objects, filePath) => {
-    try {
-        // Create directory if it doesn't exist
-        await fs.mkdir('./data', { recursive: true });
-        
-        // Convert each object to JSONL format and join with newlines
-        const jsonlContent = objects
-            .map(obj => JSON.stringify(obj))
-            .join('\n');
-        
-        // Write to file
-        await fs.writeFile(filePath, jsonlContent);
-        console.log(`Successfully saved ${objects.length} items to ${filePath}`);
-    } catch (error) {
-        console.error(`Error saving to ${filePath}:`, error);
-    }
-};
-const appendToJsonlFile = async (object, filePath) => {
-    try {
-        // Create directory if it doesn't exist
-        await fs.mkdir('./data', { recursive: true });
-        
-        // Convert object to JSONL format with newline
-        const jsonlLine = JSON.stringify(object) + '\n';
-        
-        // Append to file
-        await fs.appendFile(filePath, jsonlLine);
-        console.log(`Successfully appended item to ${filePath}`);
-    } catch (error) {
-        console.error(`Error appending to ${filePath}:`, error);
-    }
-};
 
-// Add new function to handle manifest operations
-const handleManifest = {
-    async load(filePath) {
-        try {
-            const content = await fs.readFile(filePath, 'utf-8');
-            return new Set(
-                content.trim().split('\n')
-                    .map(line => JSON.parse(line).url)
-            );
-        } catch (error) {
-            // If file doesn't exist, return empty Set
-            return new Set();
-        }
-    },
-
-    async append(url, filePath) {
-        const manifestEntry = {
-            url,
-            scrapedAt: new Date().toISOString()
-        };
-        await appendToJsonlFile(manifestEntry, filePath);
-    }
-};
 
 // Modify getAppData function
 const getAppData = async (apps) => {
@@ -297,7 +242,7 @@ const getAppData = async (apps) => {
 
     // Load manifest
     const manifestPath = './data/manifest.jsonl';
-    const processedUrls = await handleManifest.load(manifestPath);
+    const processedUrls = await loadManifest(manifestPath);
     
     // Filter out already processed apps
     const unprocessedApps = apps.filter(app => !processedUrls.has(app.url));
@@ -360,7 +305,7 @@ const getAppData = async (apps) => {
                             // Save the app data
                             await appendToJsonlFile(finalAppData, './data/apps_detailed.jsonl');
                             // Add to manifest
-                            await handleManifest.append(app.url, manifestPath);
+                            await appendToManifest(app.url, manifestPath);
                             
                             console.log(`Successfully processed: ${appData.basicInfo.name}`);
                             return { status: 'success', data: finalAppData };
