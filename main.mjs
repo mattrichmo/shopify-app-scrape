@@ -266,15 +266,55 @@ const appendToJsonlFile = async (object, filePath) => {
         console.error(`Error appending to ${filePath}:`, error);
     }
 };
+
+// Add new function to handle manifest operations
+const handleManifest = {
+    async load(filePath) {
+        try {
+            const content = await fs.readFile(filePath, 'utf-8');
+            return new Set(
+                content.trim().split('\n')
+                    .map(line => JSON.parse(line).url)
+            );
+        } catch (error) {
+            // If file doesn't exist, return empty Set
+            return new Set();
+        }
+    },
+
+    async append(url, filePath) {
+        const manifestEntry = {
+            url,
+            scrapedAt: new Date().toISOString()
+        };
+        await appendToJsonlFile(manifestEntry, filePath);
+    }
+};
+
+// Modify getAppData function
 const getAppData = async (apps) => {
     console.log(`Starting to process ${apps.length} apps...`);
 
-    const batchSize = 5;
+    // Load manifest
+    const manifestPath = './data/manifest.jsonl';
+    const processedUrls = await handleManifest.load(manifestPath);
+    
+    // Filter out already processed apps
+    const unprocessedApps = apps.filter(app => !processedUrls.has(app.url));
+    console.log(`Found ${processedUrls.size} previously processed apps`);
+    console.log(`${unprocessedApps.length} apps remaining to be processed`);
+
+    if (unprocessedApps.length === 0) {
+        console.log('No new apps to process');
+        return [];
+    }
+
+    const batchSize = 3;
     const results = [];
     
-    for (let i = 0; i < apps.length; i += batchSize) {
-        const batch = apps.slice(i, i + batchSize);
-        console.log(`\nProcessing batch ${i/batchSize + 1} of ${Math.ceil(apps.length/batchSize)}`);
+    for (let i = 0; i < unprocessedApps.length; i += batchSize) {
+        const batch = unprocessedApps.slice(i, i + batchSize);
+        console.log(`\nProcessing batch ${i/batchSize + 1} of ${Math.ceil(unprocessedApps.length/batchSize)}`);
         
         let retryApps = batch;
         let retryTimeout = 10000; // Start with 10 second timeout
@@ -312,13 +352,16 @@ const getAppData = async (apps) => {
                                 return { status: 'error', app };
                             }
 
-                            // Create new object with URL first, then spread the rest
                             const finalAppData = {
                                 url: app.url,
                                 ...appData
                             };
 
+                            // Save the app data
                             await appendToJsonlFile(finalAppData, './data/apps_detailed.jsonl');
+                            // Add to manifest
+                            await handleManifest.append(app.url, manifestPath);
+                            
                             console.log(`Successfully processed: ${appData.basicInfo.name}`);
                             return { status: 'success', data: finalAppData };
                         } catch (error) {
@@ -434,6 +477,7 @@ const getSitemapLinks = async (sitemap) => {
 
     return data;
 };
+
 
 const main = async () => {
     const sitemap = "https://apps.shopify.com/sitemap.xml"
