@@ -94,36 +94,49 @@ The scraper implements several measures to handle rate limiting:
 ## Example Data Structure
 
 
-## Object Shape 
+## Object Shape
 
-json {
-"url": "https://apps.shopify.com/example",
-"basicInfo": {
-"name": "Example App",
-"icon": "https://cdn.shopify.com/example-icon.png",
-"description": ["Description paragraph 1", "Description paragraph 2"],
-"highlights": ["Feature 1", "Feature 2"]
-},
-"ratings": {
-"score": "4.8",
-"total": "1234",
-"breakdown": {
-"5 stars": 1000,
-"4 stars": 200,
-"3 stars": 34
+```json
+{
+  "url": "https://apps.shopify.com/example",
+  "basicInfo": {
+    "name": "Example App",
+    "icon": "https://cdn.shopify.com/example-icon.png",
+    "description": [
+      "Description paragraph 1",
+      "Description paragraph 2"
+    ],
+    "highlights": [
+      "Feature 1",
+      "Feature 2"
+    ]
+  },
+  "ratings": {
+    "score": "4.8",
+    "total": "1234",
+    "breakdown": {
+      "5 stars": 1000,
+      "4 stars": 200,
+      "3 stars": 34
+    }
+  },
+  "pricing": {
+    "plans": [
+      {
+        "name": "Basic",
+        "price": "29.99",
+        "interval": "month",
+        "features": [
+          "Feature 1",
+          "Feature 2"
+        ],
+        "trial": "14-day free trial"
+      }
+    ],
+    "currency": "USD"
+  }
 }
-},
-"pricing": {
-"plans": [{
-"name": "Basic",
-"price": "29.99",
-"interval": "month",
-"features": ["Feature 1", "Feature 2"],
-"trial": "14-day free trial"
-}],
-"currency": "USD"
-}
-}
+```
 
 
 
